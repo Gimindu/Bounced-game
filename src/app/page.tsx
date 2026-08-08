@@ -121,7 +121,7 @@ export default function Home() {
 
 
       {/* CANVAS + overlays */}
-      <div className="scanlines" style={{ position: "relative", height: "100%", flex: "1 1 auto", display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <div style={{ position: "relative", height: "100%", flex: "1 1 auto", display: "flex", alignItems: "center", justifyContent: "center" }}>
         <GameCanvas
           isPlaying={gameState === "PLAYING"}
           selectedColor={selectedColor}

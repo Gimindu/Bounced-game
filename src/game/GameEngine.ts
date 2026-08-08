@@ -522,12 +522,6 @@ export class GameEngine {
       this.ctx.fillStyle = '#111827';
       this.ctx.fillRect(piston.x, piston.y, piston.width, piston.height);
 
-      // Draw Piston Number
-      this.ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
-      this.ctx.font = 'bold 24px sans-serif';
-      this.ctx.textAlign = 'center';
-      this.ctx.textBaseline = 'middle';
-      this.ctx.fillText(index.toString(), piston.x + piston.width / 2, piston.y + piston.height / 2);
     });
 
 
@@ -634,31 +628,7 @@ export class GameEngine {
       this.ctx.restore();
     });
 
-    // --- DEBUG GRID (Squares with numbers) ---
-    this.ctx.save();
-    this.ctx.strokeStyle = 'rgba(0, 0, 0, 0.2)'; // Darker grid lines
-    this.ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';   // Darker text
-    this.ctx.font = 'bold 12px sans-serif';      // Smaller text for smaller squares
-    this.ctx.textAlign = 'center';
-    this.ctx.textBaseline = 'middle';
-    this.ctx.lineWidth = 1;
-    
-    const gridSize = 50;
-    let squareNumber = 1;
-    
-    const startX = 50;
-    const endX = 750;
-    const startY = 130;
-    const endY = 1130;
-    
-    for (let y = startY; y < endY; y += gridSize) {
-      for (let x = startX; x < endX; x += gridSize) {
-        this.ctx.strokeRect(x, y, gridSize, gridSize);
-        this.ctx.fillText(`${squareNumber}`, x + gridSize / 2, y + gridSize / 2);
-        squareNumber++;
-      }
-    }
-    this.ctx.restore();
+    // Debug grid removed
   }
 
   private drawKnife(x: number, y: number, w: number, h: number) {
