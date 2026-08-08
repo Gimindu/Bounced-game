@@ -346,11 +346,24 @@ export class GameEngine {
       }
     }
 
-    // Check game over only when ALL players are dead
-    const allDead = this.players.every(p => p.isDead && p.deadTimer <= 0);
-    if (allDead) {
+    // Check win/loss based on surviving players
+    const alivePlayers = this.players.filter(p => !p.isDead);
+    const deadPlayers = this.players.filter(p => p.isDead);
+    const allCorpsesGone = deadPlayers.every(p => p.deadTimer <= 0);
+
+    if (alivePlayers.length === 0 && allCorpsesGone) {
+      // Everyone died
       this.isPlaying = false;
       if (this.onGameOver) this.onGameOver();
+    } else if (alivePlayers.length === 1 && this.players.length > 1 && allCorpsesGone) {
+      // Last man standing!
+      this.isPlaying = false;
+      const winner = alivePlayers[0];
+      if (winner.color === this.playerColor) {
+        if (this.onWin) this.onWin();
+      } else {
+        if (this.onGameOver) this.onGameOver();
+      }
     }
   }
 
@@ -530,8 +543,8 @@ export class GameEngine {
     this.players.forEach(p => {
       if (p.isDead) {
         if (p.deadTimer > 0) {
-          // Draw corpse as a squished grey block
-          this.ctx.fillStyle = '#7f8c8d';
+          // Draw corpse as a squished block of their original color
+          this.ctx.fillStyle = this.getColorHex(p.color);
           this.ctx.globalAlpha = Math.max(0, p.deadTimer / 3.0);
           this.ctx.fillRect(p.x, p.y + p.height - 10, p.width, 10);
           this.ctx.globalAlpha = 1.0;

@@ -56,7 +56,7 @@ export default function Home() {
     }}>
 
       {/* LEFT SIDEBAR */}
-      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "28px", minWidth: "240px", flex: "0 0 240px" }}>
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "28px", minWidth: "240px", flex: "0 0 240px", marginLeft: "150px" }}>
         
         {/* Title */}
         <div style={{ textAlign: "center" }}>
