@@ -52,7 +52,9 @@ export class GameEngine {
   
   private playerColor: Color | null = null;
   private isPlaying: boolean = false;
-  
+  private animationFrameId: number | null = null;
+  private knifeImg: HTMLImageElement;
+
   public onWin?: () => void;
   public onGameOver?: () => void;
   private audioCtx: AudioContext | null = null;
@@ -64,6 +66,8 @@ export class GameEngine {
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
     this.ctx = canvas.getContext('2d')!;
+    this.knifeImg = new Image();
+    this.knifeImg.src = '/knife.png';
     
     // Initialize level
     const level = createLevel();
@@ -622,20 +626,10 @@ export class GameEngine {
   private drawKnife(x: number, y: number, w: number, h: number) {
     this.ctx.save();
     this.ctx.translate(x + w/2, y + h/2);
-    this.ctx.rotate(Math.PI / 4); // slanted
-    
-    // Blade
-    this.ctx.fillStyle = '#00ffff'; // cyan blade
-    this.ctx.beginPath();
-    this.ctx.moveTo(0, -h/2);
-    this.ctx.lineTo(w/4, 0);
-    this.ctx.lineTo(-w/4, 0);
-    this.ctx.fill();
-
-    // Handle
-    this.ctx.fillStyle = '#8e44ad'; // purple handle
-    this.ctx.fillRect(-w/6, 0, w/3, h/2);
-
+    // The image itself is slanted in the user's provided file
+    if (this.knifeImg.complete && this.knifeImg.naturalWidth > 0) {
+      this.ctx.drawImage(this.knifeImg, -w, -h, w*2, h*2); // Doubling size to make it pop!
+    }
     this.ctx.restore();
   }
 
