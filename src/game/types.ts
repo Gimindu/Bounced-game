@@ -24,6 +24,7 @@ export interface Player {
   hasKnife: boolean;
   speed: number;
   isDead: boolean;
+  deadTimer: number;
   trail: { x: number, y: number }[];
   squashX: number;
   squashY: number;

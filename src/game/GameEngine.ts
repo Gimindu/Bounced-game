@@ -80,21 +80,21 @@ export class GameEngine {
     for (let i = 0; i < 4; i++) {
       this.unifiedPistons.push({
         type: 'vertical', x: level.startX + i * (level.chamberWidth + level.spacing),
-        y: 150, width: level.chamberWidth, height: 0, maxVal: 175, delay: 0
+        y: 150, width: level.chamberWidth, height: 0, maxVal: 130, delay: 0
       });
     }
     // Fill left gap (x=70 to 100)
-    this.unifiedPistons.push({ type: 'vertical', x: 70, y: 150, width: 30, height: 0, maxVal: 175, delay: 0 });
+    this.unifiedPistons.push({ type: 'vertical', x: 70, y: 150, width: 30, height: 0, maxVal: 130, delay: 0 });
     // Fill gap between chamber 3 and right drop (x=560 to 630)
-    this.unifiedPistons.push({ type: 'vertical', x: 560, y: 150, width: 70, height: 0, maxVal: 175, delay: 0 });
+    this.unifiedPistons.push({ type: 'vertical', x: 560, y: 150, width: 70, height: 0, maxVal: 130, delay: 0 });
     // Fill top of Right Gap (x=630 to 730)
-    this.unifiedPistons.push({ type: 'vertical', x: 630, y: 150, width: 100, height: 0, maxVal: 175, delay: 0 });
+    this.unifiedPistons.push({ type: 'vertical', x: 630, y: 150, width: 100, height: 0, maxVal: 130, delay: 0 });
 
-    // Group 1: Floor 0 Sweep Right (Starts at 7.0s, sweeps from 70 to 630, UNDER the chambers)
-    this.unifiedPistons.push({ type: 'horizontal_right', x: 70, y: 325, width: 0, height: 75, maxVal: 560, delay: 7.0 });
+    // Group 1: Floor 0 Sweep Right (Starts at 5.2s, sweeps from 70 to 630, height 120 to reach Floor 0)
+    this.unifiedPistons.push({ type: 'horizontal_right', x: 70, y: 280, width: 0, height: 120, maxVal: 560, delay: 5.2 });
 
-    // Group 2: Right Gap Floor 0 to 1 (Starts at 29.4s, pours from 325 down to Floor 1 ceiling at 420)
-    this.unifiedPistons.push({ type: 'vertical', x: 630, y: 325, width: 100, height: 0, maxVal: 95, delay: 29.4 });
+    // Group 2: Right Gap Floor 0 to 1 (Starts at 27.6s, pours from 280 down to Floor 1 ceiling at 420)
+    this.unifiedPistons.push({ type: 'vertical', x: 630, y: 280, width: 100, height: 0, maxVal: 140, delay: 27.6 });
 
     // Group 3: Floor 1 Sweep Left (Starts at 33.2s, sweeps from right wall 730 left to 150)
     this.unifiedPistons.push({ type: 'horizontal_left', x: 730, y: 420, width: 0, height: 160, maxVal: 580, delay: 33.2, anchorX: 730 });
@@ -131,6 +131,7 @@ export class GameEngine {
         hasKnife: false,
         speed: 150,
         isDead: false,
+        deadTimer: 3.0,
         trail: [],
         squashX: 1,
         squashY: 1
@@ -234,7 +235,16 @@ export class GameEngine {
     }
 
     this.players.forEach(p => {
-      if (p.isDead) return;
+      if (p.isDead) {
+        if (p.deadTimer > 0) {
+          p.deadTimer -= dt;
+          p.velocity.y += 800 * dt; // gravity applies to corpses
+          p.y += p.velocity.y * dt;
+          p.velocity.x = 0; // stop sliding
+          this.walls.forEach(w => this.handleRectCollision(p, w));
+        }
+        return;
+      }
 
       // Move player
       p.x += p.velocity.x * dt;
@@ -288,9 +298,14 @@ export class GameEngine {
       });
 
       // Finish line check
-      if (p.color === this.playerColor && this.checkAABB(p, this.finishLine)) {
+      if (this.checkAABB(p, this.finishLine)) {
         this.isPlaying = false;
-        if (this.onWin) this.onWin();
+        if (p.color === this.playerColor) {
+          if (this.onWin) this.onWin();
+        } else {
+          // An AI won the race
+          if (this.onGameOver) this.onGameOver();
+        }
       }
     });
 
@@ -331,9 +346,9 @@ export class GameEngine {
       }
     }
 
-    // Check game over
-    const mainPlayer = this.players.find(p => p.color === this.playerColor);
-    if (mainPlayer && mainPlayer.isDead) {
+    // Check game over only when ALL players are dead
+    const allDead = this.players.every(p => p.isDead && p.deadTimer <= 0);
+    if (allDead) {
       this.isPlaying = false;
       if (this.onGameOver) this.onGameOver();
     }
@@ -476,10 +491,20 @@ export class GameEngine {
       this.ctx.strokeRect(w.x, w.y, w.width, w.height);
     });
     
+    // Draw Barriers
+    this.barriers.forEach(b => {
+      if (!b.isActive) return;
+      this.ctx.fillStyle = this.getColorHex(b.color);
+      this.ctx.fillRect(b.x, b.y, b.width, b.height);
+      // Draw brick pattern
+      this.ctx.strokeStyle = '#fff';
+      this.ctx.lineWidth = 1;
+      this.ctx.strokeRect(b.x, b.y, b.width, b.height);
+    });
+
     // Draw Unified Pistons
     this.unifiedPistons.forEach((piston, index) => {
       if (piston.height === 0 && piston.width === 0) return;
-      
       
       this.ctx.fillStyle = '#111827';
       this.ctx.fillRect(piston.x, piston.y, piston.width, piston.height);
@@ -492,16 +517,7 @@ export class GameEngine {
       this.ctx.fillText(index.toString(), piston.x + piston.width / 2, piston.y + piston.height / 2);
     });
 
-    // Draw Barriers
-    this.barriers.forEach(b => {
-      if (!b.isActive) return;
-      this.ctx.fillStyle = this.getColorHex(b.color);
-      this.ctx.fillRect(b.x, b.y, b.width, b.height);
-      // Draw brick pattern
-      this.ctx.strokeStyle = '#fff';
-      this.ctx.lineWidth = 1;
-      this.ctx.strokeRect(b.x, b.y, b.width, b.height);
-    });
+
 
     // Draw Unpicked Knives
     this.knives.forEach(k => {
@@ -512,7 +528,16 @@ export class GameEngine {
 
     // Draw Players and Trails
     this.players.forEach(p => {
-      if (p.isDead) return;
+      if (p.isDead) {
+        if (p.deadTimer > 0) {
+          // Draw corpse as a squished grey block
+          this.ctx.fillStyle = '#7f8c8d';
+          this.ctx.globalAlpha = Math.max(0, p.deadTimer / 3.0);
+          this.ctx.fillRect(p.x, p.y + p.height - 10, p.width, 10);
+          this.ctx.globalAlpha = 1.0;
+        }
+        return;
+      }
 
       // Draw Trail
       if (p.trail.length > 1) {
