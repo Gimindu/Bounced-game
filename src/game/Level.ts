@@ -1,9 +1,9 @@
-import { Wall, Barrier, Rect } from './types';
+import { Wall, Barrier, Rect, LevelData, UnifiedPiston, Knife, Vector2 } from './types';
 
 export const CANVAS_WIDTH = 800;
 export const CANVAS_HEIGHT = 1200;
 
-export const createLevel = () => {
+export const createLevel = (): LevelData => {
   const walls: Wall[] = [];
   const barriers: Barrier[] = [];
   
@@ -91,5 +91,62 @@ export const createLevel = () => {
   addBlackDoor(500, 600); // Floor 2 (y=600 to 760)
   addBlackDoor(250, 780); // Floor 3 (y=780 to 940)
 
-  return { walls, barriers, finishLine, chamberWidth, chamberHeight, startX, spacing };
+  // Initialize unified cascading pistons (acts like a liquid snake)
+  const pistons: UnifiedPiston[] = [];
+  
+  // Group 0: Chambers & Fillers (t=0)
+  for (let i = 0; i < 4; i++) {
+    pistons.push({
+      type: 'vertical', x: startX + i * (chamberWidth + spacing),
+      y: 150, width: chamberWidth, height: 0, maxVal: 130, delay: 0
+    });
+  }
+  // Fill left gap (x=70 to 100)
+  pistons.push({ type: 'vertical', x: 70, y: 150, width: 30, height: 0, maxVal: 130, delay: 0 });
+  // Fill gap between chamber 3 and right drop (x=560 to 630)
+  pistons.push({ type: 'vertical', x: 560, y: 150, width: 70, height: 0, maxVal: 130, delay: 0 });
+  // Fill top of Right Gap (x=630 to 730)
+  pistons.push({ type: 'vertical', x: 630, y: 150, width: 100, height: 0, maxVal: 130, delay: 0 });
+
+  // Group 1: Floor 0 Sweep Right (Starts at 2.6s, sweeps from 70 to 630, height 120 to reach Floor 0)
+  pistons.push({ type: 'horizontal_right', x: 70, y: 280, width: 0, height: 120, maxVal: 560, delay: 2.6 });
+
+  // Group 2: Right Gap Floor 0 to 1 (Starts at 13.8s, pours from 280 down to Floor 1 ceiling at 420)
+  pistons.push({ type: 'vertical', x: 630, y: 280, width: 100, height: 0, maxVal: 140, delay: 13.8 });
+
+  // Group 3: Floor 1 Sweep Left (Starts at 16.6s, sweeps from right wall 730 left to 150)
+  pistons.push({ type: 'horizontal_left', x: 730, y: 420, width: 0, height: 160, maxVal: 580, delay: 16.6, anchorX: 730 });
+
+  // Group 4: Left Gap Floor 1 to 2 (Starts at 28.2s, pours from 420 down to Floor 2 ceiling at 600)
+  pistons.push({ type: 'vertical', x: 70, y: 420, width: 80, height: 0, maxVal: 180, delay: 28.2 });
+
+  // Group 5: Floor 2 Sweep Right (Starts at 31.8s, sweeps from left wall 70 right to 630)
+  pistons.push({ type: 'horizontal_right', x: 70, y: 600, width: 0, height: 160, maxVal: 560, delay: 31.8 });
+
+  // Group 6: Right Gap Floor 2 to 3 (Starts at 43.0s, pours from 600 down to Floor 3 ceiling at 780)
+  pistons.push({ type: 'vertical', x: 630, y: 600, width: 100, height: 0, maxVal: 180, delay: 43.0 });
+
+  // Group 7: Floor 3 Sweep Left (Starts at 46.6s, sweeps from right wall 730 left to 150)
+  pistons.push({ type: 'horizontal_left', x: 730, y: 780, width: 0, height: 160, maxVal: 580, delay: 46.6, anchorX: 730 });
+  
+  // Knives
+  const knives: Knife[] = [];
+  knives.push({
+    id: `knife-100`,
+    x: 110,
+    y: 490, // Centered in slot 100
+    width: 30,
+    height: 30,
+    pickedUpBy: null
+  });
+
+  // Start Points for the 4 players
+  const startPoints: Vector2[] = [];
+  for (let i = 0; i < 4; i++) {
+    const cx = startX + i * (chamberWidth + spacing) + chamberWidth / 2;
+    const cy = 150 + chamberHeight / 2;
+    startPoints.push({ x: cx - 15, y: cy - 15 });
+  }
+
+  return { walls, barriers, finishLine, pistons, knives, startPoints };
 };

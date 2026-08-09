@@ -2,9 +2,10 @@
 
 import { useState, useEffect } from "react";
 import GameCanvas from "@/components/GameCanvas";
-import { Color, GameState } from "@/game/types";
+import LevelEditor from "@/components/LevelEditor";
+import { Color, GameState, LevelData } from "@/game/types";
 import { GiKnifeFork, GiFinishLine } from "react-icons/gi";
-import { FaCircle, FaSkull, FaTrophy, FaRedo } from "react-icons/fa";
+import { FaCircle, FaSkull, FaTrophy, FaRedo, FaTools, FaVolumeUp, FaVolumeMute } from "react-icons/fa";
 
 const COLOR_CONFIG: { color: Color; hex: string; label: string; btnClass: string }[] = [
   { color: "red",    hex: "#ff3b3b", label: "RED",    btnClass: "btn-red" },
@@ -17,6 +18,8 @@ export default function Home() {
   const [gameState, setGameState] = useState<GameState>("LOADING");
   const [selectedColor, setSelectedColor] = useState<Color | null>(null);
   const [hoveredColor, setHoveredColor] = useState<Color | null>(null);
+  const [customLevelData, setCustomLevelData] = useState<LevelData | undefined>(undefined);
+  const [isMuted, setIsMuted] = useState(false);
 
   useEffect(() => {
     if (gameState === "LOADING") {
@@ -60,11 +63,40 @@ export default function Home() {
       display: "flex", flexDirection: "row",
       alignItems: "center", justifyContent: "center",
       width: "100vw", height: "100vh",
-      gap: "24px", padding: "16px",
+      gap: gameState === "EDITOR" ? "0px" : "24px", padding: gameState === "EDITOR" ? "0px" : "16px",
       overflow: "hidden",
     }}>
+      
+      {/* Global Mute Button */}
+      <button 
+        onClick={() => setIsMuted(!isMuted)}
+        style={{
+          position: "absolute", top: "20px", right: "20px", zIndex: 100,
+          background: "rgba(0,0,0,0.5)", border: "1px solid #3b8fff", color: "#3b8fff",
+          borderRadius: "50%", width: "40px", height: "40px",
+          display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer",
+          transition: "all 0.2s"
+        }}
+        onMouseEnter={e => { (e.target as HTMLButtonElement).style.background = "#3b8fff"; (e.target as HTMLButtonElement).style.color = "#000"; }}
+        onMouseLeave={e => { (e.target as HTMLButtonElement).style.background = "rgba(0,0,0,0.5)"; (e.target as HTMLButtonElement).style.color = "#3b8fff"; }}
+        aria-label="Toggle Mute"
+      >
+        {isMuted ? <FaVolumeMute style={{ pointerEvents: 'none' }} /> : <FaVolumeUp style={{ pointerEvents: 'none' }} />}
+      </button>
 
-      {/* LEFT SIDEBAR */}
+      {gameState === "EDITOR" ? (
+        <LevelEditor 
+          onPlayTest={(data) => {
+            setCustomLevelData(data);
+            setGameState("START");
+          }} 
+          onExit={() => {
+            setGameState("START");
+          }}
+        />
+      ) : (
+        <>
+          {/* LEFT SIDEBAR */}
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "28px", minWidth: "240px", flex: "0 0 240px", marginLeft: "150px" }}>
         
         {/* Title */}
@@ -117,6 +149,34 @@ export default function Home() {
             <p style={{ color: "#445566", fontSize: "0.75rem", marginTop: "4px", letterSpacing: "0.08em", textAlign: "center" }}>
               Bounces auto &mdash; just survive!
             </p>
+            
+            <button
+              onClick={() => {
+                setCustomLevelData(undefined); // Clear any custom level if we are going to edit a new one (or let LevelEditor handle its own loading)
+                setGameState("EDITOR");
+              }}
+              style={{
+                marginTop: "20px",
+                width: "100%", height: "40px",
+                borderRadius: "8px",
+                backgroundColor: "rgba(255,255,255,0.05)",
+                border: "1px solid rgba(255,255,255,0.1)",
+                color: "#8899bb",
+                cursor: "pointer",
+                display: "flex", alignItems: "center", justifyContent: "center", gap: "8px",
+                fontFamily: "Orbitron, sans-serif", fontSize: "0.8rem", letterSpacing: "0.1em",
+                transition: "all 0.2s"
+              }}
+              onMouseEnter={e => { (e.target as HTMLButtonElement).style.backgroundColor = "rgba(255,255,255,0.1)"; (e.target as HTMLButtonElement).style.borderColor = "#3b8fff"; (e.target as HTMLButtonElement).style.color = "#3b8fff"; }}
+              onMouseLeave={e => { (e.target as HTMLButtonElement).style.backgroundColor = "rgba(255,255,255,0.05)"; (e.target as HTMLButtonElement).style.borderColor = "rgba(255,255,255,0.1)"; (e.target as HTMLButtonElement).style.color = "#8899bb"; }}
+            >
+              <FaTools style={{ pointerEvents: 'none' }} /> <span style={{ pointerEvents: 'none' }}>SANDBOX MODE</span>
+            </button>
+            {customLevelData && (
+              <p style={{ color: "#3bff7a", fontSize: "0.7rem", marginTop: "4px", letterSpacing: "0.1em", textAlign: "center" }}>
+                Testing Custom Level
+              </p>
+            )}
           </div>
         )}
 
@@ -134,6 +194,8 @@ export default function Home() {
         <GameCanvas
           isPlaying={gameState === "PLAYING"}
           selectedColor={selectedColor}
+          levelData={customLevelData}
+          isMuted={isMuted}
           onGameOver={() => setGameState("GAME_OVER")}
           onWin={() => setGameState("WIN")}
         />
@@ -244,6 +306,8 @@ export default function Home() {
           </div>
         )}
       </div>
+      </>
+      )}
     </main>
   );
 }

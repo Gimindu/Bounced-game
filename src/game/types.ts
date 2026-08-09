@@ -1,5 +1,5 @@
 export type Color = 'red' | 'blue' | 'green' | 'yellow' | 'black';
-export type GameState = 'LOADING' | 'START' | 'PLAYING' | 'GAME_OVER' | 'WIN';
+export type GameState = 'LOADING' | 'START' | 'PLAYING' | 'GAME_OVER' | 'WIN' | 'EDITOR';
 
 export interface Vector2 {
   x: number;
@@ -43,4 +43,20 @@ export interface Wall extends Rect {}
 export interface Knife extends Rect {
   id: string;
   pickedUpBy: string | null;
+}
+
+export interface UnifiedPiston extends Rect {
+  type: 'vertical' | 'horizontal_left' | 'horizontal_right';
+  maxVal: number;
+  delay: number;
+  anchorX?: number; // Used to keep the right edge of left-sweeping pistons anchored
+}
+
+export interface LevelData {
+  walls: Wall[];
+  barriers: Barrier[];
+  pistons: UnifiedPiston[];
+  knives: Knife[];
+  finishLine: Rect;
+  startPoints: Vector2[];
 }

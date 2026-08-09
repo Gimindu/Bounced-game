@@ -1,4 +1,4 @@
-import { Player, Barrier, Wall, Rect, Color, Knife } from './types';
+import { Player, Barrier, Wall, Rect, Color, Knife, LevelData, UnifiedPiston, Vector2 } from './types';
 import { createLevel, CANVAS_WIDTH, CANVAS_HEIGHT } from './Level';
 
 // Particle for block-break and death explosions
@@ -28,13 +28,6 @@ interface DeathFragment {
   rotSpeed: number;
 }
 
-interface UnifiedPiston extends Rect {
-  type: 'vertical' | 'horizontal_left' | 'horizontal_right';
-  maxVal: number;
-  delay: number;
-  anchorX?: number; // Used to keep the right edge of left-sweeping pistons anchored
-}
-
 export class GameEngine {
   private canvas: HTMLCanvasElement;
   private ctx: CanvasRenderingContext2D;
@@ -62,69 +55,34 @@ export class GameEngine {
   
   private unifiedPistons: UnifiedPiston[] = [];
   private gameTime: number = 0;
+  private isMuted: boolean = false;
 
-  constructor(canvas: HTMLCanvasElement) {
+  constructor(canvas: HTMLCanvasElement, customLevel?: LevelData) {
     this.canvas = canvas;
     this.ctx = canvas.getContext('2d')!;
     this.knifeImg = new Image();
     this.knifeImg.src = '/knife.png';
     
     // Initialize level
-    const level = createLevel();
+    const level = customLevel || createLevel();
     this.walls = level.walls;
-    
-    // Initialize unified cascading pistons (acts like a liquid snake)
-    this.unifiedPistons = [];
-    
-    // Group 0: Chambers & Fillers (t=0)
-    for (let i = 0; i < 4; i++) {
-      this.unifiedPistons.push({
-        type: 'vertical', x: level.startX + i * (level.chamberWidth + level.spacing),
-        y: 150, width: level.chamberWidth, height: 0, maxVal: 130, delay: 0
-      });
-    }
-    // Fill left gap (x=70 to 100)
-    this.unifiedPistons.push({ type: 'vertical', x: 70, y: 150, width: 30, height: 0, maxVal: 130, delay: 0 });
-    // Fill gap between chamber 3 and right drop (x=560 to 630)
-    this.unifiedPistons.push({ type: 'vertical', x: 560, y: 150, width: 70, height: 0, maxVal: 130, delay: 0 });
-    // Fill top of Right Gap (x=630 to 730)
-    this.unifiedPistons.push({ type: 'vertical', x: 630, y: 150, width: 100, height: 0, maxVal: 130, delay: 0 });
-
-    // Group 1: Floor 0 Sweep Right (Starts at 2.6s, sweeps from 70 to 630, height 120 to reach Floor 0)
-    this.unifiedPistons.push({ type: 'horizontal_right', x: 70, y: 280, width: 0, height: 120, maxVal: 560, delay: 2.6 });
-
-    // Group 2: Right Gap Floor 0 to 1 (Starts at 13.8s, pours from 280 down to Floor 1 ceiling at 420)
-    this.unifiedPistons.push({ type: 'vertical', x: 630, y: 280, width: 100, height: 0, maxVal: 140, delay: 13.8 });
-
-    // Group 3: Floor 1 Sweep Left (Starts at 16.6s, sweeps from right wall 730 left to 150)
-    this.unifiedPistons.push({ type: 'horizontal_left', x: 730, y: 420, width: 0, height: 160, maxVal: 580, delay: 16.6, anchorX: 730 });
-
-    // Group 4: Left Gap Floor 1 to 2 (Starts at 28.2s, pours from 420 down to Floor 2 ceiling at 600)
-    this.unifiedPistons.push({ type: 'vertical', x: 70, y: 420, width: 80, height: 0, maxVal: 180, delay: 28.2 });
-
-    // Group 5: Floor 2 Sweep Right (Starts at 31.8s, sweeps from left wall 70 right to 630)
-    this.unifiedPistons.push({ type: 'horizontal_right', x: 70, y: 600, width: 0, height: 160, maxVal: 560, delay: 31.8 });
-
-    // Group 6: Right Gap Floor 2 to 3 (Starts at 43.0s, pours from 600 down to Floor 3 ceiling at 780)
-    this.unifiedPistons.push({ type: 'vertical', x: 630, y: 600, width: 100, height: 0, maxVal: 180, delay: 43.0 });
-
-    // Group 7: Floor 3 Sweep Left (Starts at 46.6s, sweeps from right wall 730 left to 150)
-    this.unifiedPistons.push({ type: 'horizontal_left', x: 730, y: 780, width: 0, height: 160, maxVal: 580, delay: 46.6, anchorX: 730 });
-    
     this.barriers = level.barriers;
     this.finishLine = level.finishLine;
-
+    
+    // Clone pistons so we can animate their height/width without mutating the original LevelData
+    this.unifiedPistons = level.pistons.map(p => ({...p}));
+    
     // Initialize players and knives
     const colors: Color[] = ['red', 'blue', 'green', 'yellow'];
     for (let i = 0; i < 4; i++) {
-      const cx = level.startX + i * (level.chamberWidth + level.spacing) + level.chamberWidth / 2;
-      const cy = 150 + level.chamberHeight / 2;
+      // Use provided start point if available, else fallback to a default spot
+      const startPos = level.startPoints && level.startPoints[i] ? level.startPoints[i] : { x: 100 + i * 120, y: 150 };
       
       this.players.push({
         id: `player-${colors[i]}`,
         color: colors[i],
-        x: cx - 15,
-        y: cy - 15,
+        x: startPos.x,
+        y: startPos.y,
         width: 30,
         height: 30,
         velocity: { x: (Math.random() > 0.5 ? 1 : -1) * 150, y: (Math.random() > 0.5 ? 1 : -1) * 150 },
@@ -141,15 +99,8 @@ export class GameEngine {
       this.scores[`player-${colors[i]}`] = 0;
     }
     
-    // Add knife to grid slot 100 (Row 8, Col 2 -> X=100-150, Y=480-530)
-    this.knives.push({
-      id: `knife-100`,
-      x: 110,
-      y: 490, // Centered in slot 100
-      width: 30,
-      height: 30,
-      pickedUpBy: null
-    });
+    // Deep copy knives
+    this.knives = level.knives.map(k => ({...k}));
     
     // Draw initial state
     requestAnimationFrame(() => this.draw());
@@ -167,6 +118,10 @@ export class GameEngine {
     
     this.lastTime = performance.now();
     this.loop(this.lastTime);
+  }
+
+  public setMuted(muted: boolean) {
+    this.isMuted = muted;
   }
 
   public stop() {
@@ -278,7 +233,7 @@ export class GameEngine {
           
           if (p.color === b.color || b.color === 'black') {
             b.isActive = false; // Destroy it after bouncing
-            this.playSound('break');
+            this.playSound('break', p.color);
             this.spawnBlockParticles(b);
             this.scores[p.id] = (this.scores[p.id] || 0) + 1;
           }
@@ -286,10 +241,10 @@ export class GameEngine {
       });
 
       // Canvas boundary collision (just in case they escape)
-      if (p.x < 0) { p.x = 0; p.velocity.x *= -1; p.squashX = 0.6; p.squashY = 1.4; this.playSound('bounce'); }
-      if (p.x + p.width > CANVAS_WIDTH) { p.x = CANVAS_WIDTH - p.width; p.velocity.x *= -1; p.squashX = 0.6; p.squashY = 1.4; this.playSound('bounce'); }
-      if (p.y < 0) { p.y = 0; p.velocity.y *= -1; p.squashX = 1.4; p.squashY = 0.6; this.playSound('bounce'); }
-      if (p.y + p.height > CANVAS_HEIGHT) { p.y = CANVAS_HEIGHT - p.height; p.velocity.y *= -1; p.squashX = 1.4; p.squashY = 0.6; this.playSound('bounce'); }
+      if (p.x < 0) { p.x = 0; p.velocity.x *= -1; p.squashX = 0.6; p.squashY = 1.4; this.playSound('bounce', p.color); }
+      if (p.x + p.width > CANVAS_WIDTH) { p.x = CANVAS_WIDTH - p.width; p.velocity.x *= -1; p.squashX = 0.6; p.squashY = 1.4; this.playSound('bounce', p.color); }
+      if (p.y < 0) { p.y = 0; p.velocity.y *= -1; p.squashX = 1.4; p.squashY = 0.6; this.playSound('bounce', p.color); }
+      if (p.y + p.height > CANVAS_HEIGHT) { p.y = CANVAS_HEIGHT - p.height; p.velocity.y *= -1; p.squashX = 1.4; p.squashY = 0.6; this.playSound('bounce', p.color); }
 
       // Knife pickup
       this.knives.forEach(k => {
@@ -353,7 +308,7 @@ export class GameEngine {
             p1.squashX = 0.7; p1.squashY = 1.3;
             p2.squashX = 0.7; p2.squashY = 1.3;
             
-            this.playSound('bounce');
+            this.playSound('bounce', p1.color);
           }
         }
       }
@@ -416,10 +371,11 @@ export class GameEngine {
       p.squashX = 1.4; p.squashY = 0.6;
     }
     
-    this.playSound('bounce');
+    this.playSound('bounce', p.color);
   }
 
-  private playSound(type: 'bounce' | 'break') {
+  private playSound(type: 'bounce' | 'break', color?: Color) {
+    if (this.isMuted) return;
     if (!this.audioCtx) return;
     
     const now = this.audioCtx.currentTime;
@@ -431,6 +387,13 @@ export class GameEngine {
     const osc = this.audioCtx.createOscillator();
     const gain = this.audioCtx.createGain();
     
+    // Determine base frequency offset by color
+    let colorFreqOffset = 0;
+    if (color === 'red') colorFreqOffset = -100;
+    else if (color === 'blue') colorFreqOffset = 100;
+    else if (color === 'green') colorFreqOffset = 300;
+    else if (color === 'yellow') colorFreqOffset = 500;
+
     // Add random pitch variation (detune) for satisfying juice
     const pitchShift = (Math.random() - 0.5) * 400; // Random shift up to +/- 200 cents
     osc.detune.value = pitchShift;
@@ -440,7 +403,7 @@ export class GameEngine {
     if (type === 'bounce') {
       osc.type = 'sine';
       // Slight randomization to base frequency too
-      const baseFreq = 300 + Math.random() * 50;
+      const baseFreq = (300 + colorFreqOffset) + Math.random() * 50;
       osc.frequency.setValueAtTime(baseFreq, now);
       osc.frequency.exponentialRampToValueAtTime(baseFreq * 2, now + 0.1);
       gain.gain.setValueAtTime(0.4, now); // Increased volume
@@ -449,7 +412,8 @@ export class GameEngine {
       osc.stop(now + 0.1);
     } else if (type === 'break') {
       osc.type = 'square';
-      osc.frequency.setValueAtTime(150 + Math.random() * 50, now);
+      const baseFreq = (150 + colorFreqOffset) + Math.random() * 50;
+      osc.frequency.setValueAtTime(baseFreq, now);
       osc.frequency.exponentialRampToValueAtTime(50, now + 0.15);
       gain.gain.setValueAtTime(0.5, now);
       gain.gain.exponentialRampToValueAtTime(0.01, now + 0.15);

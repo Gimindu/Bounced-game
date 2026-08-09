@@ -2,25 +2,28 @@
 
 import { useEffect, useRef } from 'react';
 import { GameEngine } from '@/game/GameEngine';
-import { Color } from '@/game/types';
+import { Color, LevelData } from '@/game/types';
 import { CANVAS_WIDTH, CANVAS_HEIGHT } from '@/game/Level';
 
 interface GameCanvasProps {
   isPlaying: boolean;
   selectedColor: Color | null;
+  levelData?: LevelData;
+  isMuted?: boolean;
   onGameOver: () => void;
   onWin: () => void;
 }
 
-export default function GameCanvas({ isPlaying, selectedColor, onGameOver, onWin }: GameCanvasProps) {
+export default function GameCanvas({ isPlaying, selectedColor, levelData, isMuted = false, onGameOver, onWin }: GameCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const engineRef = useRef<GameEngine | null>(null);
 
   useEffect(() => {
     if (canvasRef.current && !engineRef.current) {
-      engineRef.current = new GameEngine(canvasRef.current);
+      engineRef.current = new GameEngine(canvasRef.current, levelData);
       engineRef.current.onGameOver = onGameOver;
       engineRef.current.onWin = onWin;
+      engineRef.current.setMuted(isMuted);
     }
     
     return () => {
@@ -29,7 +32,7 @@ export default function GameCanvas({ isPlaying, selectedColor, onGameOver, onWin
         engineRef.current = null;
       }
     };
-  }, [onGameOver, onWin]);
+  }, [onGameOver, onWin, levelData]);
 
   useEffect(() => {
     if (isPlaying && selectedColor && engineRef.current) {
@@ -38,6 +41,12 @@ export default function GameCanvas({ isPlaying, selectedColor, onGameOver, onWin
       engineRef.current.stop();
     }
   }, [isPlaying, selectedColor]);
+
+  useEffect(() => {
+    if (engineRef.current) {
+      engineRef.current.setMuted(isMuted);
+    }
+  }, [isMuted]);
 
   return (
     <canvas
