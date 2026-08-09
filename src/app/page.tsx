@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import GameCanvas from "@/components/GameCanvas";
 import LevelEditor from "@/components/LevelEditor";
 import { Color, GameState, LevelData } from "@/game/types";
@@ -56,6 +56,9 @@ export default function Home() {
     setSelectedColor(null);
     setGameState("START");
   };
+
+  const handleGameOver = useCallback(() => setGameState("GAME_OVER"), []);
+  const handleWin = useCallback(() => setGameState("WIN"), []);
 
   return (
     <main style={{
@@ -196,8 +199,8 @@ export default function Home() {
           selectedColor={selectedColor}
           levelData={customLevelData}
           isMuted={isMuted}
-          onGameOver={() => setGameState("GAME_OVER")}
-          onWin={() => setGameState("WIN")}
+          onGameOver={handleGameOver}
+          onWin={handleWin}
         />
 
         {/* LOADING Overlay */}
