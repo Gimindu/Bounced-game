@@ -90,26 +90,26 @@ export class GameEngine {
     // Fill top of Right Gap (x=630 to 730)
     this.unifiedPistons.push({ type: 'vertical', x: 630, y: 150, width: 100, height: 0, maxVal: 130, delay: 0 });
 
-    // Group 1: Floor 0 Sweep Right (Starts at 5.2s, sweeps from 70 to 630, height 120 to reach Floor 0)
-    this.unifiedPistons.push({ type: 'horizontal_right', x: 70, y: 280, width: 0, height: 120, maxVal: 560, delay: 5.2 });
+    // Group 1: Floor 0 Sweep Right (Starts at 2.6s, sweeps from 70 to 630, height 120 to reach Floor 0)
+    this.unifiedPistons.push({ type: 'horizontal_right', x: 70, y: 280, width: 0, height: 120, maxVal: 560, delay: 2.6 });
 
-    // Group 2: Right Gap Floor 0 to 1 (Starts at 27.6s, pours from 280 down to Floor 1 ceiling at 420)
-    this.unifiedPistons.push({ type: 'vertical', x: 630, y: 280, width: 100, height: 0, maxVal: 140, delay: 27.6 });
+    // Group 2: Right Gap Floor 0 to 1 (Starts at 13.8s, pours from 280 down to Floor 1 ceiling at 420)
+    this.unifiedPistons.push({ type: 'vertical', x: 630, y: 280, width: 100, height: 0, maxVal: 140, delay: 13.8 });
 
-    // Group 3: Floor 1 Sweep Left (Starts at 33.2s, sweeps from right wall 730 left to 150)
-    this.unifiedPistons.push({ type: 'horizontal_left', x: 730, y: 420, width: 0, height: 160, maxVal: 580, delay: 33.2, anchorX: 730 });
+    // Group 3: Floor 1 Sweep Left (Starts at 16.6s, sweeps from right wall 730 left to 150)
+    this.unifiedPistons.push({ type: 'horizontal_left', x: 730, y: 420, width: 0, height: 160, maxVal: 580, delay: 16.6, anchorX: 730 });
 
-    // Group 4: Left Gap Floor 1 to 2 (Starts at 56.4s, pours from 420 down to Floor 2 ceiling at 600)
-    this.unifiedPistons.push({ type: 'vertical', x: 70, y: 420, width: 80, height: 0, maxVal: 180, delay: 56.4 });
+    // Group 4: Left Gap Floor 1 to 2 (Starts at 28.2s, pours from 420 down to Floor 2 ceiling at 600)
+    this.unifiedPistons.push({ type: 'vertical', x: 70, y: 420, width: 80, height: 0, maxVal: 180, delay: 28.2 });
 
-    // Group 5: Floor 2 Sweep Right (Starts at 63.6s, sweeps from left wall 70 right to 630)
-    this.unifiedPistons.push({ type: 'horizontal_right', x: 70, y: 600, width: 0, height: 160, maxVal: 560, delay: 63.6 });
+    // Group 5: Floor 2 Sweep Right (Starts at 31.8s, sweeps from left wall 70 right to 630)
+    this.unifiedPistons.push({ type: 'horizontal_right', x: 70, y: 600, width: 0, height: 160, maxVal: 560, delay: 31.8 });
 
-    // Group 6: Right Gap Floor 2 to 3 (Starts at 86.0s, pours from 600 down to Floor 3 ceiling at 780)
-    this.unifiedPistons.push({ type: 'vertical', x: 630, y: 600, width: 100, height: 0, maxVal: 180, delay: 86.0 });
+    // Group 6: Right Gap Floor 2 to 3 (Starts at 43.0s, pours from 600 down to Floor 3 ceiling at 780)
+    this.unifiedPistons.push({ type: 'vertical', x: 630, y: 600, width: 100, height: 0, maxVal: 180, delay: 43.0 });
 
-    // Group 7: Floor 3 Sweep Left (Starts at 93.2s, sweeps from right wall 730 left to 150)
-    this.unifiedPistons.push({ type: 'horizontal_left', x: 730, y: 780, width: 0, height: 160, maxVal: 580, delay: 93.2, anchorX: 730 });
+    // Group 7: Floor 3 Sweep Left (Starts at 46.6s, sweeps from right wall 730 left to 150)
+    this.unifiedPistons.push({ type: 'horizontal_left', x: 730, y: 780, width: 0, height: 160, maxVal: 580, delay: 46.6, anchorX: 730 });
     
     this.barriers = level.barriers;
     this.finishLine = level.finishLine;
@@ -130,6 +130,8 @@ export class GameEngine {
         velocity: { x: (Math.random() > 0.5 ? 1 : -1) * 150, y: (Math.random() > 0.5 ? 1 : -1) * 150 },
         hasKnife: false,
         speed: 150,
+        health: 100,
+        maxHealth: 100,
         isDead: false,
         deadTimer: 3.0,
         trail: [],
@@ -216,7 +218,7 @@ export class GameEngine {
     // Update unified cascading pistons
     if (this.isPlaying) {
       this.gameTime += dt;
-      const speed = 25; // sweep speed
+      const speed = 50; // sweep speed
       this.unifiedPistons.forEach(p => {
         if (this.gameTime >= p.delay) {
           if (p.type === 'vertical') {
@@ -318,13 +320,24 @@ export class GameEngine {
 
         if (this.checkAABB(p1, p2)) {
           // Combat logic
+          let didDamage = false;
           if (p1.hasKnife && !p2.hasKnife) {
-            p2.isDead = true;
-            this.spawnDeathFragments(p2);
+            p2.health -= 34;
+            didDamage = true;
+            if (p2.health <= 0) {
+              p2.isDead = true;
+              this.spawnDeathFragments(p2);
+            }
           } else if (p2.hasKnife && !p1.hasKnife) {
-            p1.isDead = true;
-            this.spawnDeathFragments(p1);
-          } else {
+            p1.health -= 34;
+            didDamage = true;
+            if (p1.health <= 0) {
+              p1.isDead = true;
+              this.spawnDeathFragments(p1);
+            }
+          }
+          
+          if (didDamage || (!p1.hasKnife && !p2.hasKnife)) {
             // Bounce off each other
             const tempX = p1.velocity.x;
             const tempY = p1.velocity.y;
@@ -592,8 +605,19 @@ export class GameEngine {
       }
 
       if (p.hasKnife) {
-        this.drawKnife(p.x + p.width/2 - 10, p.y - 15, 20, 20);
+        this.drawKnife(p.x - 10, p.y + p.height / 2 - 15, 30, 30);
       }
+
+      // Draw Health Bar
+      const healthPct = Math.max(0, p.health / p.maxHealth);
+      this.ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+      this.ctx.fillRect(p.x, p.y - 12, p.width, 6); // Background
+      this.ctx.fillStyle = healthPct > 0.5 ? '#2ecc71' : healthPct > 0.25 ? '#f1c40f' : '#e74c3c';
+      this.ctx.fillRect(p.x, p.y - 12, p.width * healthPct, 6); // Foreground
+      
+      this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+      this.ctx.lineWidth = 1;
+      this.ctx.strokeRect(p.x, p.y - 12, p.width, 6); // Border
     });
 
     // Draw particles (square chunks rotating and shrinking)

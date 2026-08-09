@@ -1,5 +1,5 @@
 export type Color = 'red' | 'blue' | 'green' | 'yellow' | 'black';
-export type GameState = 'START' | 'PLAYING' | 'GAME_OVER' | 'WIN';
+export type GameState = 'LOADING' | 'START' | 'PLAYING' | 'GAME_OVER' | 'WIN';
 
 export interface Vector2 {
   x: number;
@@ -23,6 +23,8 @@ export interface Player {
   velocity: { x: number, y: number };
   hasKnife: boolean;
   speed: number;
+  health: number;
+  maxHealth: number;
   isDead: boolean;
   deadTimer: number;
   trail: { x: number, y: number }[];

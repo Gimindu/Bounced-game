@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import GameCanvas from "@/components/GameCanvas";
 import { Color, GameState } from "@/game/types";
 import { GiKnifeFork, GiFinishLine } from "react-icons/gi";
@@ -14,9 +14,18 @@ const COLOR_CONFIG: { color: Color; hex: string; label: string; btnClass: string
 ];
 
 export default function Home() {
-  const [gameState, setGameState] = useState<GameState>("START");
+  const [gameState, setGameState] = useState<GameState>("LOADING");
   const [selectedColor, setSelectedColor] = useState<Color | null>(null);
   const [hoveredColor, setHoveredColor] = useState<Color | null>(null);
+
+  useEffect(() => {
+    if (gameState === "LOADING") {
+      const timer = setTimeout(() => {
+        setGameState("START");
+      }, 2500);
+      return () => clearTimeout(timer);
+    }
+  }, [gameState]);
 
   const handleColorSelect = (color: Color) => {
     // Unlock audio context on user gesture
@@ -128,6 +137,38 @@ export default function Home() {
           onGameOver={() => setGameState("GAME_OVER")}
           onWin={() => setGameState("WIN")}
         />
+
+        {/* LOADING Overlay */}
+        {gameState === "LOADING" && (
+          <div
+            style={{
+              position: "fixed", inset: 0,
+              display: "flex", flexDirection: "column",
+              alignItems: "center", justifyContent: "center",
+              background: "var(--bg-dark)",
+              zIndex: 50, gap: "20px",
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: "15px", marginBottom: "4px" }}>
+              <FaCircle className="flicker" style={{ color: "#3b8fff", fontSize: "3rem", filter: "drop-shadow(0 0 15px #3b8fff)" }} />
+              <h1 className="neon-title" style={{ fontSize: "3.5rem", fontWeight: 900, color: "#3b8fff", letterSpacing: "0.1em" }}>
+                BOUNCE
+              </h1>
+            </div>
+            <h1 className="neon-title" style={{ fontSize: "3.5rem", fontWeight: 900, color: "#3b8fff", letterSpacing: "0.1em" }}>
+              ARENA
+            </h1>
+            
+            <div style={{ marginTop: "50px", display: "flex", flexDirection: "column", alignItems: "center", gap: "16px" }}>
+              <p style={{ color: "#3b8fff", fontSize: "0.9rem", letterSpacing: "0.3em", fontFamily: "Orbitron, sans-serif", animation: "flicker 2s infinite" }}>
+                INITIALIZING THE ARENA...
+              </p>
+              <div style={{ width: "240px", height: "4px", background: "rgba(59, 143, 255, 0.2)", borderRadius: "2px", overflow: "hidden" }}>
+                <div style={{ width: "100%", height: "100%", background: "#3b8fff", boxShadow: "0 0 10px #3b8fff", transformOrigin: "left", animation: "loadingBar 2.5s cubic-bezier(0.4, 0, 0.2, 1) forwards" }} />
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* GAME OVER Overlay */}
         {gameState === "GAME_OVER" && (
